@@ -172,7 +172,7 @@ void CPUScheduler(Identifier whichPolicy) {
 ProcessControlBlock *FCFS_Scheduler() {
   /* Select Process based on FCFS */
   // Implement code for FCFS
-  ProcessControlBlock *selectedProcess;
+  ProcessControlBlock *selectedProcess = (ProcessControlBlock *) NULL;
 
   return(selectedProcess);
 }
@@ -186,7 +186,7 @@ ProcessControlBlock *FCFS_Scheduler() {
 \***********************************************************************/
 ProcessControlBlock *SRTF_Scheduler() {
   /* Select Process with Shortest Remaining Time*/
-  ProcessControlBlock *selectedProcess;
+  ProcessControlBlock *selectedProcess = (ProcessControlBlock *) NULL;
   
   // Implement code for SRTF
  
@@ -201,7 +201,7 @@ ProcessControlBlock *SRTF_Scheduler() {
  \***********************************************************************/
 ProcessControlBlock *RR_Scheduler() {
   /* Select Process based on RR*/
-  ProcessControlBlock *selectedProcess;
+  ProcessControlBlock *selectedProcess = (ProcessControlBlock *) NULL;
 
   // Implement code for RR                                                                                             
 
