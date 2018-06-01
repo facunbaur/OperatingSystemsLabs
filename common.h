@@ -64,7 +64,7 @@ typedef struct ProcessControlBlockTag{
   TimePeriod TotalJobDuration; /* Total CPU time job requires              */
   TimePeriod TimeInCpu;        /* Total time process spent so far on CPU   */
   TimePeriod CpuBurstTime;     /* Length of typical CPU burst of job       */
-  TimePeriod RemainingCpuBurstTime; /* Remaing time of current CPU burst   */
+  TimePeriod RemainingCpuBurstTime; /* Remaininng time of current CPU burst   */
   TimePeriod IOBurstTime;      /* Length of typical I/O burst of job       */
   TimePeriod TimeIOBurstDone;  /* Time when current I/O will be done       */
   Timestamp  JobStartTime;     /* Time when job first entered ready queue  */
@@ -91,37 +91,37 @@ typedef struct QueueParmsTag{
 extern Flag                  Show;
 extern QueueParms            Queues[MAXQUEUES];   /* Head and Tails for Job, Ready...queues  */
 extern Identifier            PolicyNumber; /* (1:FCFS) , (2:SRTF), (3:RR) */
-extern TimePeriod            Quantum;        
+extern TimePeriod            Quantum;
 
 /*****************************************************************************\
 *                               Function prototypes                           *
 \*****************************************************************************/
 
-/***********************************************************************\                    
-* Input    : None                                                       *                    
-* Output   : Returns the current system time                            *                        
+/***********************************************************************\
+* Input    : None                                                       *
+* Output   : Returns the current system time                            *
 \***********************************************************************/
 extern Timestamp            Now(void);
 
-/***********************************************************************\                         
- * Input : Queue where to enqueue and Element to enqueue                 *                        
- * Output: Updates Head and Tail as needed                               *                        
- * Function: Enqueues FIFO element in queue and updates tail and head    *                        
+/***********************************************************************\
+ * Input : Queue where to enqueue and Element to enqueue                 *
+ * Output: Updates Head and Tail as needed                               *
+ * Function: Enqueues FIFO element in queue and updates tail and head    *
 \***********************************************************************/
 extern void                 EnqueueProcess(Queue whichQueue,
 					   ProcessControlBlock *whichProcess);
 
-/***********************************************************************\                         
- * Input : Queue from which to dequeue                                  *                         
- * Output: Tail of queue                                                *                         
- * Function: Removes tail element and updates tail and head accordingly *                        
+/***********************************************************************\
+ * Input : Queue from which to dequeue                                  *
+ * Output: Tail of queue                                                *
+ * Function: Removes tail element and updates tail and head accordingly *
 \***********************************************************************/
 extern ProcessControlBlock *DequeueProcess(Queue whichQueue);
 
-/***********************************************************************\                         
- * Input : none                                                          *                        
- * Output: None                                                          *                        
- * Function: CPU executes whichProcess for CPUBurst                      *                        
+/***********************************************************************\
+ * Input : none                                                          *
+ * Output: None                                                          *
+ * Function: CPU executes whichProcess for CPUBurst                      *
 \***********************************************************************/
 extern void                 OnCPU(ProcessControlBlock *whichProcess, TimePeriod CPUBurst);
 
@@ -131,19 +131,3 @@ extern void                 BookKeeping(void);
 extern Flag                 Initialization(int argc, char **argv);
 extern void                 DisplayProcess(char c,ProcessControlBlock *whichProcess);
 extern void                 DisplayQueue(char *str, Queue whichQueue);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
