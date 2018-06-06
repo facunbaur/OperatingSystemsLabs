@@ -1,0 +1,6 @@
+Fix following:
+	ATAT(average turnaround time)
+	ART(average response time)
+	AWT(average waiting time in ready state)
+
+	correct RR for dispatcher

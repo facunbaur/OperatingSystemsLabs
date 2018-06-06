@@ -161,6 +161,7 @@ void CPUScheduler(Identifier whichPolicy) {
   }
   if (selectedProcess) {
     selectedProcess->state = RUNNING; // Process state becomes Running
+    //selectedProcess->TimeInReadyQueue = Now() - selectedProcess->JobStartTime;
     EnqueueProcess(RUNNINGQUEUE, selectedProcess); // Put process in Running Queue
   }
 }
@@ -174,6 +175,7 @@ ProcessControlBlock *FCFS_Scheduler() {
   /* Select Process based on FCFS */
   // Implement code for FCFS
   ProcessControlBlock *selectedProcess = (ProcessControlBlock *) DequeueProcess(READYQUEUE);
+  //TimePeriod j = Now();
   return(selectedProcess);
 }
 
@@ -194,11 +196,13 @@ ProcessControlBlock *SRTF_Scheduler() {
   while(currentProcess){
     if(!chosenProcess){ //if there is not a second process on the queue set current to chosen and return
       chosenProcess == currentProcess;
-      return(chosenProcess);
+      //return(chosenProcess);
+      break;
     }
     if(originalProcess == currentProcess){   //add in check to make sure to not endlessly loop
       EnqueueProcess(READYQUEUE, currentProcess);
-      return chosenProcess;
+      break;
+      //return chosenProcess;
     }
     else if(currentProcess->RemainingCpuBurstTime < chosenProcess->RemainingCpuBurstTime){ //compare current process with relative min time process
       EnqueueProcess(READYQUEUE, chosenProcess);  //makes sure to put process back on queue if its no long min
@@ -209,7 +213,6 @@ ProcessControlBlock *SRTF_Scheduler() {
     }
     currentProcess = DequeueProcess(READYQUEUE);
   }
-
   return(chosenProcess);
 }
 
@@ -247,9 +250,10 @@ void Dispatcher() {
   if (runningProcess->TimeInCpu >= runningProcess->TotalJobDuration) { //if process on running queue is done
     //printf("%s\n", "yay");
     runningProcess->JobExitTime = Now();
+    SumMetrics[WT] += runningProcess->TimeInReadyQueue;
     EnqueueProcess(EXITQUEUE,runningProcess); //then add to exit queue
-    int numJobs = NumberofJobs[THGT];
-    NumberofJobs[THGT] = numJobs + 1;
+    //int numJobs = NumberofJobs[THGT];
+    NumberofJobs[THGT] += 1;
 
   } else { // Process still needs computing
 
@@ -317,7 +321,7 @@ void BookKeeping(void){
   printf("Number of Completed Processes = %d\n", NumberofJobs[THGT]);
   printf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f\n",
 	 SumMetrics[TAT], SumMetrics[RT], SumMetrics[CBT]/end,
-	 NumberofJobs[THGT]/Now(), SumMetrics[WT]);
+	 NumberofJobs[THGT]/Now(), SumMetrics[WT]/NumberofJobs[THGT]);
 
   exit(0);
 }
