@@ -1,4 +1,2 @@
 Fix following:
-	ART(average response time)
-
-	correct RR for dispatcher
+	Test RR and SJF

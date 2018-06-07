@@ -131,15 +131,16 @@ void IO() {
     ProcessToMove = DequeueProcess(WAITINGQUEUE);
     while (ProcessToMove){
       if (Now()>=ProcessToMove->TimeIOBurstDone){
-	ProcessToMove->RemainingCpuBurstTime = ProcessToMove->CpuBurstTime;
-  ProcessToMove->TimeInWaitQueue += (Now() - ProcessToMove->TimeEnterWaiting); //Update total time in waiting
-  ProcessToMove->JobStartTime = Now();
-	EnqueueProcess(READYQUEUE,ProcessToMove);
-      } else {
-	EnqueueProcess(WAITINGQUEUE,ProcessToMove);
+	         ProcessToMove->RemainingCpuBurstTime = ProcessToMove->CpuBurstTime;
+	         ProcessToMove->TimeInWaitQueue += (Now() - ProcessToMove->TimeEnterWaiting); //Update total time in waiting added this line
+	         ProcessToMove->JobStartTime = Now();
+	         EnqueueProcess(READYQUEUE,ProcessToMove);
+      }
+      else {
+	         EnqueueProcess(WAITINGQUEUE,ProcessToMove);
       }
       if (ProcessToMove->ProcessID == IDFirstProcess){
-	break;
+	         break;
       }
       ProcessToMove =DequeueProcess(WAITINGQUEUE);
     } // while (ProcessToMove)
@@ -162,7 +163,6 @@ void CPUScheduler(Identifier whichPolicy) {
   }
   if (selectedProcess) {
     selectedProcess->state = RUNNING; // Process state becomes Running
-    //selectedProcess->TimeInReadyQueue += Now() - selectedProcess->JobStartTime;
     EnqueueProcess(RUNNINGQUEUE, selectedProcess); // Put process in Running Queue
   }
 }
@@ -236,13 +236,15 @@ ProcessControlBlock *RR_Scheduler() {
  *              else move process from running queue to Exit Queue      *
 \***********************************************************************/
 void Dispatcher() {
-  TimePeriod CpuBurstTime;
   ProcessControlBlock *currentProcess = DequeueProcess(RUNNINGQUEUE);
   if (currentProcess == NULL) {
     return;}
 
   if(currentProcess->TimeInCpu == 0) { // if first time this process gets the CPU
     currentProcess->StartCpuTime = Now(); //Update for this process the field StartCpuTime (in the PCB)
+    NumberofJobs[CBT]++;
+    NumberofJobs[RT]++;
+    SumMetrics[RT] += (Now() - currentProcess->JobArrivalTime);
   }
 
   if (currentProcess->TimeInCpu >= currentProcess->TotalJobDuration) { //if process on running queue is done
@@ -257,29 +259,25 @@ void Dispatcher() {
 
   } else { // Process still needs computing
 
-   //Determine CpuBurstTime: the length of the CPU burst needed by the process (depends on whether RR or no)
-   if(PolicyNumber == RR){
-     //currentProcess->RemainingCpuBurstTime = 0.0;      //Update the field RemainingCpuBurstTime in the PCB
-   }
-   else{ //Not Round Robin
-
+     //Determine CpuBurstTime: the length of the CPU burst needed by the process (depends on whether RR or no)
+     if(PolicyNumber == RR){
+       currentProcess->CpuBurstTime = Quantum;
+     }
      if(currentProcess->TotalJobDuration - currentProcess->TimeInCpu < currentProcess->CpuBurstTime){ //if cpu burst is greater than remaining time set that instead
-       CpuBurstTime = currentProcess->TotalJobDuration - currentProcess->TimeInCpu;
-     }
-     else{
-       CpuBurstTime = currentProcess->CpuBurstTime;
+         currentProcess->CpuBurstTime = currentProcess->TotalJobDuration - currentProcess->TimeInCpu;
      }
    }
-   OnCPU(currentProcess, CpuBurstTime);               //Put the process on the CPU for CpuBurstTime using the function OnCPU(processOnCPU, CpuBurstTime)
+   OnCPU(currentProcess, currentProcess->CpuBurstTime);               //Put the process on the CPU for CpuBurstTime using the function OnCPU(processOnCPU, CpuBurstTime)
                                                       //where procesOnCPU is a pointer to the process running
 
     //Update the field TimeInCpu
-    currentProcess->TimeInCpu += CpuBurstTime; // SB_ 6/4 use CpuBurstTime instead of PCB-> CpuBurst Time
+    currentProcess->TimeInCpu += currentProcess->CpuBurstTime; // SB_ 6/4 use CpuBurstTime instead of PCB-> CpuBurst Time
+    currentProcess->RemainingCpuBurstTime = (currentProcess->RemainingCpuBurstTime - currentProcess->CpuBurstTime);
     EnqueueProcess(RUNNINGQUEUE, currentProcess);
-    SumMetrics[CBT] += CpuBurstTime;
+    SumMetrics[CBT] += currentProcess->CpuBurstTime;
+
 
   }
-}
 
 /***********************************************************************\
 * Input : None                                                          *
@@ -313,14 +311,14 @@ void BookKeeping(void){
   Metric m;
 
   // Compute averages and final results
-  // ........
+
 
   printf("\n********* Processes Managemenent Numbers ******************************\n");
   printf("Policy Number = %d, Quantum = %.6f   Show = %d\n", PolicyNumber, Quantum, Show);
   printf("Number of Completed Processes = %d\n", NumberofJobs[THGT]);
   printf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f\n",
-	 SumMetrics[TAT]/NumberofJobs[THGT], SumMetrics[RT], SumMetrics[CBT]/end,
-	 NumberofJobs[THGT]/Now(), SumMetrics[WT]/NumberofJobs[WT]);
+	 SumMetrics[TAT]/NumberofJobs[THGT], SumMetrics[RT]/NumberofJobs[RT], SumMetrics[CBT]/end,
+	 NumberofJobs[THGT]/end, SumMetrics[WT]/NumberofJobs[WT]);
 
   exit(0);
 }
