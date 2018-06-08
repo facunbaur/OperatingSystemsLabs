@@ -57,7 +57,7 @@ Flag                 ManagementInitialization(void);
 void                 LongtermScheduler(void);
 void                 IO();
 void                 CPUScheduler(Identifier whichPolicy);
-ProcessControlBlock *SRTF_Scheduler();
+ProcessControlBlock *SJF_Scheduler();
 ProcessControlBlock *FCFS_Scheduler();
 ProcessControlBlock *RR_Scheduler();
 void                 Dispatcher();
@@ -76,9 +76,9 @@ void                 Dispatcher();
 \*****************************************************************************/
 
 int main (int argc, char **argv) {
-   if (Initialization(argc,argv)){
-     ManageProcesses();
-   }
+  if (Initialization(argc,argv)){
+    ManageProcesses();
+  }
 } /* end of main function */
 
 /***********************************************************************\
@@ -157,7 +157,7 @@ void CPUScheduler(Identifier whichPolicy) {
   switch(whichPolicy){
     case FCFS : selectedProcess = FCFS_Scheduler();
       break;
-    case SJF : selectedProcess = SRTF_Scheduler();
+    case SJF : selectedProcess = SJF_Scheduler();
       break;
     case RR   : selectedProcess = RR_Scheduler();
   }
@@ -174,7 +174,7 @@ void CPUScheduler(Identifier whichPolicy) {
  \***********************************************************************/
 ProcessControlBlock *FCFS_Scheduler() {
   /* Select Process based on FCFS */
-  // Implement code for FCFS
+  // Just pulls off the tail of the queue...the first person to go in the list
   ProcessControlBlock *selectedProcess = (ProcessControlBlock *) DequeueProcess(READYQUEUE);
   return(selectedProcess);
 }
@@ -182,27 +182,25 @@ ProcessControlBlock *FCFS_Scheduler() {
 
 
 /***********************************************************************\
- * Input : None                                                         *
+ * Input : None                                                        *
  * Output: Pointer to the process with shortest remaining time (SJF)   *
  * Function: Returns process control block with SJF                    *
 \***********************************************************************/
-ProcessControlBlock *SRTF_Scheduler() {
+ProcessControlBlock *SJF_Scheduler() {
   /* Select Process with Shortest Remaining Time*/
-  // Implement code for SRTF_Scheduler
-  //printf("Starting SRTF_Scheduler");
   ProcessControlBlock *currentProcess = (ProcessControlBlock *) DequeueProcess(READYQUEUE);
   ProcessControlBlock *chosenProcess = DequeueProcess(READYQUEUE);
   ProcessControlBlock *originalProcess = currentProcess;    //add original process to use later for a check to see if loop is done
   while(currentProcess){
     if(!chosenProcess){ //if there is not a second process on the queue set current to chosen and return
-      chosenProcess == currentProcess;
-      //return(chosenProcess);
-      break;
+      chosenProcess = currentProcess;
+      return(chosenProcess);
     }
-    if(originalProcess == currentProcess){   //add in check to make sure to not endlessly loop
-      EnqueueProcess(READYQUEUE, currentProcess);
-      break;
-      //return chosenProcess;
+    else if(originalProcess->ProcessID == currentProcess->ProcessID){   //add in check to make sure to not endlessly loop
+      if(chosenProcess->ProcessID != currentProcess->ProcessID){ //if the chosen process is not the current process put the current back on the queue
+        EnqueueProcess(READYQUEUE, currentProcess);
+      }
+      return(chosenProcess);
     }
     else if(currentProcess->RemainingCpuBurstTime < chosenProcess->RemainingCpuBurstTime){ //compare current process with relative min time process
       EnqueueProcess(READYQUEUE, chosenProcess);  //makes sure to put process back on queue if its no long min
@@ -263,6 +261,9 @@ void Dispatcher() {
      if(PolicyNumber == RR){
        currentProcess->CpuBurstTime = Quantum;
      }
+     if(currentProcess->RemainingCpuBurstTime < currentProcess->CpuBurstTime){ //if remaining burst is less than the allocated time then reset allocated
+       currentProcess->CpuBurstTime = currentProcess->RemainingCpuBurstTime;
+     }
      if(currentProcess->TotalJobDuration - currentProcess->TimeInCpu < currentProcess->CpuBurstTime){ //if cpu burst is greater than remaining time set that instead
          currentProcess->CpuBurstTime = currentProcess->TotalJobDuration - currentProcess->TimeInCpu;
      }
@@ -319,6 +320,14 @@ void BookKeeping(void){
   printf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f\n",
 	 SumMetrics[TAT]/NumberofJobs[THGT], SumMetrics[RT]/NumberofJobs[RT], SumMetrics[CBT]/end,
 	 NumberofJobs[THGT]/end, SumMetrics[WT]/NumberofJobs[WT]);
+
+   /*FILE *f = fopen("file.txt", "w");
+   fprintf("\n********* Processes Managemenent Numbers ******************************\nPolicy Number = %d, Quantum = %.6f   Show = %d\n", PolicyNumber, Quantum, Show);
+   fprintf("Number of Completed Processes = %d\n", NumberofJobs[THGT]);
+   fprintf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f\n",
+ 	 SumMetrics[TAT]/NumberofJobs[THGT], SumMetrics[RT]/NumberofJobs[RT], SumMetrics[CBT]/end,
+ 	 NumberofJobs[THGT]/end, SumMetrics[WT]/NumberofJobs[WT]);
+   fclose(f);*/
 
   exit(0);
 }
