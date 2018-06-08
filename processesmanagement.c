@@ -24,7 +24,7 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 \*****************************************************************************/
 #define MAX_QUEUE_SIZE 10
 #define FCFS            1
-#define SRTF            2
+#define SJF            2
 #define RR              3
 
 
@@ -148,7 +148,7 @@ void IO() {
 }
 
 /***********************************************************************\
- * Input : whichPolicy (1:FCFS, 2: SRTF, and 3:RR)                      *
+ * Input : whichPolicy (1:FCFS, 2: SJF, and 3:RR)                      *
  * Output: None                                                         *
  * Function: Selects Process from Ready Queue and Puts it on Running Q. *
 \***********************************************************************/
@@ -157,7 +157,7 @@ void CPUScheduler(Identifier whichPolicy) {
   switch(whichPolicy){
     case FCFS : selectedProcess = FCFS_Scheduler();
       break;
-    case SRTF : selectedProcess = SRTF_Scheduler();
+    case SJF : selectedProcess = SRTF_Scheduler();
       break;
     case RR   : selectedProcess = RR_Scheduler();
   }
@@ -183,8 +183,8 @@ ProcessControlBlock *FCFS_Scheduler() {
 
 /***********************************************************************\
  * Input : None                                                         *
- * Output: Pointer to the process with shortest remaining time (SRTF)   *
- * Function: Returns process control block with SRTF                    *
+ * Output: Pointer to the process with shortest remaining time (SJF)   *
+ * Function: Returns process control block with SJF                    *
 \***********************************************************************/
 ProcessControlBlock *SRTF_Scheduler() {
   /* Select Process with Shortest Remaining Time*/
@@ -266,7 +266,7 @@ void Dispatcher() {
      if(currentProcess->TotalJobDuration - currentProcess->TimeInCpu < currentProcess->CpuBurstTime){ //if cpu burst is greater than remaining time set that instead
          currentProcess->CpuBurstTime = currentProcess->TotalJobDuration - currentProcess->TimeInCpu;
      }
-   }
+
    OnCPU(currentProcess, currentProcess->CpuBurstTime);               //Put the process on the CPU for CpuBurstTime using the function OnCPU(processOnCPU, CpuBurstTime)
                                                       //where procesOnCPU is a pointer to the process running
 
@@ -275,7 +275,7 @@ void Dispatcher() {
     currentProcess->RemainingCpuBurstTime = (currentProcess->RemainingCpuBurstTime - currentProcess->CpuBurstTime);
     EnqueueProcess(RUNNINGQUEUE, currentProcess);
     SumMetrics[CBT] += currentProcess->CpuBurstTime;
-
+    }
 
   }
 

@@ -90,7 +90,7 @@ typedef struct QueueParmsTag{
 \*****************************************************************************/
 extern Flag                  Show;
 extern QueueParms            Queues[MAXQUEUES];   /* Head and Tails for Job, Ready...queues  */
-extern Identifier            PolicyNumber; /* (1:FCFS) , (2:SRTF), (3:RR) */
+extern Identifier            PolicyNumber; /* (1:FCFS) , (2:SJF), (3:RR) */
 extern TimePeriod            Quantum;        
 
 /*****************************************************************************\
