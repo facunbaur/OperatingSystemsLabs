@@ -188,30 +188,28 @@ ProcessControlBlock *FCFS_Scheduler() {
 \***********************************************************************/
 ProcessControlBlock *SJF_Scheduler() {
   /* Select Process with Shortest Remaining Time*/
-  ProcessControlBlock *currentProcess = (ProcessControlBlock *) DequeueProcess(READYQUEUE);
-  ProcessControlBlock *chosenProcess = DequeueProcess(READYQUEUE);
-  ProcessControlBlock *originalProcess = currentProcess;    //add original process to use later for a check to see if loop is done
-  while(currentProcess){
-    if(!chosenProcess){ //if there is not a second process on the queue set current to chosen and return
-      chosenProcess = currentProcess;
-      return(chosenProcess);
-    }
-    else if(originalProcess->ProcessID == currentProcess->ProcessID){   //add in check to make sure to not endlessly loop
-      if(chosenProcess->ProcessID != currentProcess->ProcessID){ //if the chosen process is not the current process put the current back on the queue
-        EnqueueProcess(READYQUEUE, currentProcess);
+  ProcessControlBlock *minimumProcess = (ProcessControlBlock *) DequeueProcess(READYQUEUE);
+  if(minimumProcess){
+    ProcessControlBlock *compareProcess = DequeueProcess(READYQUEUE);
+    ProcessControlBlock *originalProcess = minimumProcess;    //add original process to use later for a check to see if loop is done
+    while(compareProcess){
+      if(compareProcess->RemainingCpuBurstTime < minimumProcess->RemainingCpuBurstTime){ //compare current process with relative min time process
+        EnqueueProcess(READYQUEUE, minimumProcess);  //makes sure to put process back on queue if its no long min
+        minimumProcess = compareProcess;
       }
-      return(chosenProcess);
+      else{       //make sure to put compareProcess back on ready queue if not picked
+        EnqueueProcess(READYQUEUE, compareProcess);
+      }
+      if(originalProcess->ProcessID == compareProcess->ProcessID){   //add in check to make sure to not endlessly loop
+        if(minimumProcess->ProcessID != compareProcess->ProcessID){ //if the chosen process is not the current process put the current back on the queue
+          EnqueueProcess(READYQUEUE, compareProcess);
+        }
+        break;
+      }
+      compareProcess = DequeueProcess(READYQUEUE);
     }
-    else if(currentProcess->RemainingCpuBurstTime < chosenProcess->RemainingCpuBurstTime){ //compare current process with relative min time process
-      EnqueueProcess(READYQUEUE, chosenProcess);  //makes sure to put process back on queue if its no long min
-      chosenProcess = currentProcess;
-    }
-    else{       //make sure to put currentProcess back on ready queue if not picked
-      EnqueueProcess(READYQUEUE, currentProcess);
-    }
-    currentProcess = DequeueProcess(READYQUEUE);
   }
-  return(chosenProcess);
+  return(minimumProcess);
 }
 
 
@@ -235,50 +233,48 @@ ProcessControlBlock *RR_Scheduler() {
 \***********************************************************************/
 void Dispatcher() {
   ProcessControlBlock *currentProcess = DequeueProcess(RUNNINGQUEUE);
-  if (currentProcess == NULL) {
-    return;}
-
-  if(currentProcess->TimeInCpu == 0) { // if first time this process gets the CPU
-    currentProcess->StartCpuTime = Now(); //Update for this process the field StartCpuTime (in the PCB)
-    NumberofJobs[CBT]++;
-    NumberofJobs[RT]++;
-    SumMetrics[RT] += (Now() - currentProcess->JobArrivalTime);
-  }
-
-  if (currentProcess->TimeInCpu >= currentProcess->TotalJobDuration) { //if process on running queue is done
-    currentProcess->JobExitTime = Now();
-    currentProcess->state = DONE; //set currentProcess State
-    SumMetrics[TAT] += (currentProcess->JobExitTime - currentProcess->JobArrivalTime); //calculate turnaround time
-    SumMetrics[WT] += (currentProcess->JobExitTime - currentProcess->JobArrivalTime - currentProcess->TimeInWaitQueue
-     - currentProcess->TimeInCpu - currentProcess->TimeInJobQueue); //calculate time in ready queue
-    EnqueueProcess(EXITQUEUE,currentProcess); //then add to exit queue
-    NumberofJobs[THGT]++;
-    NumberofJobs[WT]++;
-
-  } else { // Process still needs computing
-
-     //Determine CpuBurstTime: the length of the CPU burst needed by the process (depends on whether RR or no)
-     if(PolicyNumber == RR){
-       currentProcess->CpuBurstTime = Quantum;
-     }
-     if(currentProcess->RemainingCpuBurstTime < currentProcess->CpuBurstTime){ //if remaining burst is less than the allocated time then reset allocated
-       currentProcess->CpuBurstTime = currentProcess->RemainingCpuBurstTime;
-     }
-     if(currentProcess->TotalJobDuration - currentProcess->TimeInCpu < currentProcess->CpuBurstTime){ //if cpu burst is greater than remaining time set that instead
-         currentProcess->CpuBurstTime = currentProcess->TotalJobDuration - currentProcess->TimeInCpu;
-     }
-
-   OnCPU(currentProcess, currentProcess->CpuBurstTime);               //Put the process on the CPU for CpuBurstTime using the function OnCPU(processOnCPU, CpuBurstTime)
-                                                      //where procesOnCPU is a pointer to the process running
-
-    //Update the field TimeInCpu
-    currentProcess->TimeInCpu += currentProcess->CpuBurstTime; // SB_ 6/4 use CpuBurstTime instead of PCB-> CpuBurst Time
-    currentProcess->RemainingCpuBurstTime = (currentProcess->RemainingCpuBurstTime - currentProcess->CpuBurstTime);
-    EnqueueProcess(RUNNINGQUEUE, currentProcess);
-    SumMetrics[CBT] += currentProcess->CpuBurstTime;
+  if (currentProcess) {
+    if(currentProcess->TimeInCpu == 0) { // if first time this process gets on the CPU
+      currentProcess->StartCpuTime = Now(); //Update for this process the field StartCpuTime (in the PCB)
+      NumberofJobs[CBT]++;
+      NumberofJobs[RT]++;
+      SumMetrics[RT] += (Now() - currentProcess->JobArrivalTime);
     }
 
+    if (currentProcess->TimeInCpu >= currentProcess->TotalJobDuration) { //if process on the running queue is done
+      currentProcess->JobExitTime = Now();
+      currentProcess->state = DONE; //set currentProcess State
+      SumMetrics[TAT] += (currentProcess->JobExitTime - currentProcess->JobArrivalTime); //calculate turnaround time
+      SumMetrics[WT] += (currentProcess->JobExitTime - currentProcess->JobArrivalTime - currentProcess->TimeInWaitQueue
+       - currentProcess->TimeInCpu - currentProcess->TimeInJobQueue); //calculate time in ready queue
+      EnqueueProcess(EXITQUEUE,currentProcess); //then add to exit queue
+      NumberofJobs[THGT]++;
+      NumberofJobs[WT]++;
+
+    } else { // Process still needs to do computing
+
+       //Determine CpuBurstTime: the length of the CPU burst needed by the process (depends on whether RR or no)
+       if(PolicyNumber == RR){
+         currentProcess->CpuBurstTime = Quantum;
+       }
+       if(currentProcess->RemainingCpuBurstTime < currentProcess->CpuBurstTime){ //if remaining burst is less than the allocated time then reset allocated
+         currentProcess->CpuBurstTime = currentProcess->RemainingCpuBurstTime;
+       }
+       if(currentProcess->TotalJobDuration - currentProcess->TimeInCpu < currentProcess->CpuBurstTime){ //if cpu burst is greater than remaining time set that instead
+           currentProcess->CpuBurstTime = currentProcess->TotalJobDuration - currentProcess->TimeInCpu;
+       }
+
+      //Put the process on the CPU for CpuBurstTime using the function OnCPU(processOnCPU, CpuBurstTime where procesOnCPU is a pointer to the process running
+      OnCPU(currentProcess, currentProcess->CpuBurstTime);
+      //Update the field TimeInCpu/RemainingCpuBurstTime
+      currentProcess->TimeInCpu += currentProcess->CpuBurstTime; // SB_ 6/4 use CpuBurstTime instead of PCB-> CpuBurst Time
+      currentProcess->RemainingCpuBurstTime = (currentProcess->CpuBurstTime - currentProcess->RemainingCpuBurstTime);
+      //put the process to run back on the queue
+      EnqueueProcess(RUNNINGQUEUE, currentProcess);
+      SumMetrics[CBT] += currentProcess->CpuBurstTime;
+      }
   }
+}
 
 /***********************************************************************\
 * Input : None                                                          *
