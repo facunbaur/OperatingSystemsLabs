@@ -309,21 +309,12 @@ void BookKeeping(void){
 
   // Compute averages and final results
 
-
   printf("\n********* Processes Managemenent Numbers ******************************\n");
   printf("Policy Number = %d, Quantum = %.6f   Show = %d\n", PolicyNumber, Quantum, Show);
   printf("Number of Completed Processes = %d\n", NumberofJobs[THGT]);
   printf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f\n",
 	 SumMetrics[TAT]/NumberofJobs[THGT], SumMetrics[RT]/NumberofJobs[RT], SumMetrics[CBT]/end,
 	 NumberofJobs[THGT]/end, SumMetrics[WT]/NumberofJobs[WT]);
-
-   /*FILE *f = fopen("file.txt", "w");
-   fprintf("\n********* Processes Managemenent Numbers ******************************\nPolicy Number = %d, Quantum = %.6f   Show = %d\n", PolicyNumber, Quantum, Show);
-   fprintf("Number of Completed Processes = %d\n", NumberofJobs[THGT]);
-   fprintf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f\n",
- 	 SumMetrics[TAT]/NumberofJobs[THGT], SumMetrics[RT]/NumberofJobs[RT], SumMetrics[CBT]/end,
- 	 NumberofJobs[THGT]/end, SumMetrics[WT]/NumberofJobs[WT]);
-   fclose(f);*/
 
   exit(0);
 }
