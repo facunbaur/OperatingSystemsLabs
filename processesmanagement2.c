@@ -28,6 +28,9 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 #define FCFS            1
 #define RR              3
 
+#define OMAP             0
+#define PAGING           1
+#define PAGESIZE  8192
 
 #define MAXMETRICS      5
 
@@ -46,10 +49,11 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 
 Quantity NumberofJobs[MAXMETRICS]; // Number of Jobs for which metric was collected
 Average  SumMetrics[MAXMETRICS]; // Sum for each Metrics
-int  memoryPolicy = 1; //OMAP = 0, PAGING = 1
-int  Pages[1048576 / 256] = {0};
-int array_size = *(&Pages + 1) - Pages;
-int pagesAvailable;
+int memoryPolicy = 1; //OMAP = 0, PAGING = 1
+
+int  Pages[2] = {1048576 / PAGESIZE, 0};
+//int pages_size = *(&Pages + 1) - Pages;
+//int pagesAvailable;
 
 /*****************************************************************************\
 *                               Function prototypes                           *
@@ -79,7 +83,6 @@ void                 Dispatcher();
 \*****************************************************************************/
 
 int main (int argc, char **argv) {
-   pagesAvailable = array_size;
    if (Initialization(argc,argv)){
      ManageProcesses();
    }
@@ -97,6 +100,7 @@ void ManageProcesses(void){
     IO();
     CPUScheduler(PolicyNumber);
     Dispatcher();
+
   }
 }
 
@@ -205,7 +209,9 @@ ProcessControlBlock *SRTF() {
  *              else move process from running queue to Exit Queue      *
 \***********************************************************************/
 void Dispatcher() {
+
   double start;
+  int pagesToBeReleased;
   ProcessControlBlock *processOnCPU = Queues[RUNNINGQUEUE].Tail; // Pick Process on CPU
   if (!processOnCPU) { // No Process in Running Queue, i.e., on CPU
     return;
@@ -216,38 +222,26 @@ void Dispatcher() {
     processOnCPU->StartCpuTime = Now(); // Set StartCpuTime
   }
   if (processOnCPU->TimeInCpu >= processOnCPU-> TotalJobDuration) { // Process Complete
-    switch (memoryPolicy) {
-      case 0: //omap
+    if (memoryPolicy == OMAP){
+        printf("%s\n", "NOOOO");
         AvailableMemory += processOnCPU->MemoryRequested; //release memory being held by process
-        break;
-      case 1: ;//paging
-        int i = 0;
-        int pagesIndex = array_size - 1;
-        /*int pagesRequested = (processOnCPU->MemoryRequested / 256); //Calculating the number of pages and rounds it up
-        if(processOnCPU->MemoryRequested % 256 > 0){
-          pagesRequested++;
-        }*/
-        double pagesRequested = ceil(processOnCPU->MemoryRequested / 256);
-        while (i <= (int) pagesRequested) {
-          if(Pages[pagesIndex] == 1){
-            Pages[pagesIndex] = 0;
-            i++;
-          }
-          pagesIndex--;
+    }
+    else if (memoryPolicy == PAGING){
+        //pagesToBeReleased = ceil(processOnCPU->MemoryRequested / PAGESIZE);
+        pagesToBeReleased = (processOnCPU->MemoryRequested / PAGESIZE); //Calculating the number of pages and rounds it up
+        if(processOnCPU->MemoryRequested % PAGESIZE > 0){
+          pagesToBeReleased++;
         }
-        pagesAvailable += pagesRequested;
-        break;
-        case 2: //Best-Fit
-      default:
-        break;
-      }
+        Pages[0] += pagesToBeReleased;
+        Pages[1] -= pagesToBeReleased;
+    }
 
     NumberofJobs[THGT]++;
     NumberofJobs[TAT]++;
     NumberofJobs[WT]++;
     NumberofJobs[CBT]++;
-    printf(" >>>>>Process # %d complete, %d Processes Completed So Far <<<<<<\n",
-	  processOnCPU->ProcessID,NumberofJobs[THGT]);
+    printf(" >>>>>Process # %d complete, %d Processes Completed So Far Page(s) Released %d<<<<<<\n",
+	  processOnCPU->ProcessID,NumberofJobs[THGT], pagesToBeReleased);
     processOnCPU=DequeueProcess(RUNNINGQUEUE);
     EnqueueProcess(EXITQUEUE,processOnCPU);
 
@@ -323,7 +317,7 @@ void BookKeeping(void){
   printf("\n********* Processes Managemenent Numbers ******************************\n");
   printf("Policy Number = %d, Quantum = %.6f   Show = %d\n", PolicyNumber, Quantum, Show);
   printf("Number of Completed Processes = %d\n", NumberofJobs[THGT]);
-  printf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f\n",
+  printf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f\n\a",
 	 SumMetrics[TAT], SumMetrics[RT], SumMetrics[CBT],
 	 NumberofJobs[THGT]/Now(), SumMetrics[WT]);
 
@@ -340,8 +334,7 @@ void BookKeeping(void){
 void LongtermScheduler(void){
   ProcessControlBlock *currentProcess = DequeueProcess(JOBQUEUE);
   while (currentProcess) {
-    switch (memoryPolicy) {
-      case 0:   //OMAP
+    if(memoryPolicy == OMAP){
         //if there is enough memory admit process
         if (AvailableMemory >= currentProcess->MemoryRequested){
           AvailableMemory -= currentProcess->MemoryRequested;
@@ -351,32 +344,24 @@ void LongtermScheduler(void){
           printf(" >>>>>Not enough Memory for Process to be Admitted<<<<<<\n");
           return;
         }
-        break;
-      case 1: ;//Paging
-        int pagesRequested = (currentProcess->MemoryRequested / 256); //Calculating the number of pages and rounds it up
-        if(currentProcess->MemoryRequested % 256 > 0){
+    }
+    else if(memoryPolicy == PAGING){
+        int pagesRequested = (currentProcess->MemoryRequested / PAGESIZE); //Calculating the number of pages and rounds it up
+        if(currentProcess->MemoryRequested % PAGESIZE > 0){
           pagesRequested++;
         }
-        printf("Pages Available: %d Pages Requested: %d\n", pagesAvailable, pagesRequested);
-        if (pagesRequested > pagesAvailable){
+        printf("Pages Available: %d Pages Requested: %d\n" , Pages[0], pagesRequested);
+        if(Pages[0] - pagesRequested >= 0){
+          Pages[0] -= pagesRequested;
+          Pages[1] += pagesRequested;
+        }
+        else{
           printf("Number of requested pages exceeds the amount of available pages.");
           EnqueueProcess(JOBQUEUE, currentProcess);
           return;
         }
-        int i = 0;
-        pagesAvailable -= pagesRequested;
-        AvailableMemory -= currentProcess->MemoryRequested;
-        while(pagesRequested > 0 && i <= array_size){
-            if(Pages[i] == 0){
-              Pages[i] = 1;
-              pagesRequested--;
-            }
-            i++;
-        }
-        break;
-      default:
-        break;
       }
+
 
 
     currentProcess->TimeInJobQueue = Now() - currentProcess->JobArrivalTime; // Set TimeInJobQueue
