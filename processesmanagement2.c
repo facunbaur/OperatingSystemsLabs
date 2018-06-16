@@ -27,7 +27,7 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 #define MAX_QUEUE_SIZE 10
 #define FCFS            1
 #define RR              3
-
+#define PAGESIZE        256
 
 #define MAXMETRICS      5
 
@@ -47,8 +47,8 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 Quantity NumberofJobs[MAXMETRICS]; // Number of Jobs for which metric was collected
 Average  SumMetrics[MAXMETRICS]; // Sum for each Metrics
 int  memoryPolicy = 1; //OMAP = 0, PAGING = 1
-int  Pages[1048576 / 256] = {0};
-int array_size = *(&Pages + 1) - Pages;
+int  Pages[1048576 / PAGESIZE] = {0};
+int pages_size = *(&Pages + 1) - Pages;
 int pagesAvailable;
 
 /*****************************************************************************\
@@ -79,7 +79,7 @@ void                 Dispatcher();
 \*****************************************************************************/
 
 int main (int argc, char **argv) {
-   pagesAvailable = array_size;
+   pagesAvailable = pages_size;
    if (Initialization(argc,argv)){
      ManageProcesses();
    }
@@ -222,12 +222,12 @@ void Dispatcher() {
         break;
       case 1: ;//paging
         int i = 0;
-        int pagesIndex = array_size - 1;
-        /*int pagesRequested = (processOnCPU->MemoryRequested / 256); //Calculating the number of pages and rounds it up
-        if(processOnCPU->MemoryRequested % 256 > 0){
+        int pagesIndex = pages_size - 1;
+        /*int pagesRequested = (processOnCPU->MemoryRequested / PAGESIZE); //Calculating the number of pages and rounds it up
+        if(processOnCPU->MemoryRequested % PAGESIZE > 0){
           pagesRequested++;
         }*/
-        double pagesRequested = ceil(processOnCPU->MemoryRequested / 256);
+        double pagesRequested = ceil(processOnCPU->MemoryRequested / PAGESIZE);
         while (i <= (int) pagesRequested) {
           if(Pages[pagesIndex] == 1){
             Pages[pagesIndex] = 0;
@@ -354,8 +354,8 @@ void LongtermScheduler(void){
         }
         break;
       case 1: ;//Paging
-        int pagesRequested = (currentProcess->MemoryRequested / 256); //Calculating the number of pages and rounds it up
-        if(currentProcess->MemoryRequested % 256 > 0){
+        int pagesRequested = (currentProcess->MemoryRequested / PAGESIZE); //Calculating the number of pages and rounds it up
+        if(currentProcess->MemoryRequested % PAGESIZE > 0){
           pagesRequested++;
         }
         printf("Pages Available: %d Pages Requested: %d\n", pagesAvailable, pagesRequested);
@@ -367,7 +367,7 @@ void LongtermScheduler(void){
         int i = 0;
         pagesAvailable -= pagesRequested;
         AvailableMemory -= currentProcess->MemoryRequested;
-        while(pagesRequested > 0 && i <= array_size){
+        while(pagesRequested > 0 && i <= pages_size){
             if(Pages[i] == 0){
               Pages[i] = 1;
               pagesRequested--;
