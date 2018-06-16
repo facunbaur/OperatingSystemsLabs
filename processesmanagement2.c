@@ -46,7 +46,10 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 
 Quantity NumberofJobs[MAXMETRICS]; // Number of Jobs for which metric was collected
 Average  SumMetrics[MAXMETRICS]; // Sum for each Metrics
-int  memoryPolicy = 0; //OMAP = 0
+int  memoryPolicy = 1; //OMAP = 0, PAGING = 1
+int  Pages[1048576 / 256] = {0};
+int array_size = *(&Pages + 1) - Pages;
+int pagesAvailable;
 
 /*****************************************************************************\
 *                               Function prototypes                           *
@@ -76,8 +79,8 @@ void                 Dispatcher();
 \*****************************************************************************/
 
 int main (int argc, char **argv) {
+   pagesAvailable = array_size;
    if (Initialization(argc,argv)){
-     printf("%d\n", AvailableMemory);
      ManageProcesses();
    }
 } /* end of main function */
@@ -212,18 +215,43 @@ void Dispatcher() {
     NumberofJobs[RT]++;
     processOnCPU->StartCpuTime = Now(); // Set StartCpuTime
   }
-
   if (processOnCPU->TimeInCpu >= processOnCPU-> TotalJobDuration) { // Process Complete
-    AvailableMemory += processOnCPU->MemoryRequested; //release memory being held by process
-    printf(" >>>>>Process # %d complete, %d Processes Completed So Far <<<<<<\n",
-	   processOnCPU->ProcessID,NumberofJobs[THGT]);
-    processOnCPU=DequeueProcess(RUNNINGQUEUE);
-    EnqueueProcess(EXITQUEUE,processOnCPU);
+    switch (memoryPolicy) {
+      case 0: //omap
+        AvailableMemory += processOnCPU->MemoryRequested; //release memory being held by process
+        break;
+      case 1: ;//paging
+        int i = 0;
+        int pagesIndex = array_size - 1;
+        /*int pagesRequested = (processOnCPU->MemoryRequested / 256); //Calculating the number of pages and rounds it up
+        if(processOnCPU->MemoryRequested % 256 > 0){
+          pagesRequested++;
+        }*/
+        double pagesRequested = ceil(processOnCPU->MemoryRequested / 256);
+        while (i <= (int) pagesRequested) {
+          if(Pages[pagesIndex] == 1){
+            Pages[pagesIndex] = 0;
+            i++;
+          }
+          pagesIndex--;
+        }
+        pagesAvailable += pagesRequested;
+        break;
+        case 2: //Best-Fit
+      default:
+        break;
+      }
 
     NumberofJobs[THGT]++;
     NumberofJobs[TAT]++;
     NumberofJobs[WT]++;
     NumberofJobs[CBT]++;
+    printf(" >>>>>Process # %d complete, %d Processes Completed So Far <<<<<<\n",
+	  processOnCPU->ProcessID,NumberofJobs[THGT]);
+    processOnCPU=DequeueProcess(RUNNINGQUEUE);
+    EnqueueProcess(EXITQUEUE,processOnCPU);
+
+
     SumMetrics[TAT]     += Now() - processOnCPU->JobArrivalTime;
     SumMetrics[WT]      += processOnCPU->TimeInReadyQueue;
 
@@ -237,7 +265,7 @@ void Dispatcher() {
     if (PolicyNumber == RR){
       CpuBurstTime = Quantum;
       if (processOnCPU->RemainingCpuBurstTime < Quantum)
-	CpuBurstTime = processOnCPU->RemainingCpuBurstTime;
+	     CpuBurstTime = processOnCPU->RemainingCpuBurstTime;
     }
     processOnCPU->RemainingCpuBurstTime -= CpuBurstTime;
     // SB_ 6/4 End Fixes RR
@@ -321,12 +349,36 @@ void LongtermScheduler(void){
         else{ //make sure to put process back on queue if not enough memory
           EnqueueProcess(JOBQUEUE, currentProcess);
           printf(" >>>>>Not enough Memory for Process to be Admitted<<<<<<\n");
-           return;
+          return;
+        }
+        break;
+      case 1: ;//Paging
+        int pagesRequested = (currentProcess->MemoryRequested / 256); //Calculating the number of pages and rounds it up
+        if(currentProcess->MemoryRequested % 256 > 0){
+          pagesRequested++;
+        }
+        printf("Pages Available: %d Pages Requested: %d\n", pagesAvailable, pagesRequested);
+        if (pagesRequested > pagesAvailable){
+          printf("Number of requested pages exceeds the amount of available pages.");
+          EnqueueProcess(JOBQUEUE, currentProcess);
+          return;
+        }
+        int i = 0;
+        pagesAvailable -= pagesRequested;
+        AvailableMemory -= currentProcess->MemoryRequested;
+        while(pagesRequested > 0 && i <= array_size){
+            if(Pages[i] == 0){
+              Pages[i] = 1;
+              pagesRequested--;
+            }
+            i++;
         }
         break;
       default:
         break;
-    }
+      }
+
+
     currentProcess->TimeInJobQueue = Now() - currentProcess->JobArrivalTime; // Set TimeInJobQueue
     currentProcess->JobStartTime = Now(); // Set JobStartTime
     EnqueueProcess(READYQUEUE,currentProcess); // Place process in Ready Queue
