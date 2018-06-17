@@ -6,18 +6,20 @@
 struct Node
 {
     int data;
+    int size;
     struct Node *next;
     struct Node *prev;
 };
 
 /* Given a reference (pointer to pointer) to the head of a list
    and an int, inserts a new node on the front of the list. */
-void push(struct Node** head_ref, int new_data){
+void push(struct Node** head_ref, int new_data, int new_size){
     /* 1. allocate node */
     struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
 
     /* 2. put in the data  */
     new_node->data  = new_data;
+    new_node->size  = new_size;
 
     /* 3. Make next of new node as head and previous as NULL */
     new_node->next = (*head_ref);
@@ -32,7 +34,7 @@ void push(struct Node** head_ref, int new_data){
 }
 
 /* Given a node as prev_node, insert a new node after the given node */
-void insertAfter(struct Node* prev_node, int new_data){
+void insertAfter(struct Node* prev_node, int new_data, int new_size){
     /*1. check if the given prev_node is NULL */
     if (prev_node == NULL)
     {
@@ -45,6 +47,7 @@ void insertAfter(struct Node* prev_node, int new_data){
 
     /* 3. put in the data  */
     new_node->data  = new_data;
+    new_node->size  = new_size;
 
     /* 4. Make next of new node as next of prev_node */
     new_node->next = prev_node->next;
@@ -62,7 +65,7 @@ void insertAfter(struct Node* prev_node, int new_data){
 
 /* Given a reference (pointer to pointer) to the head
    of a DLL and an int, appends a new node at the end  */
-void append(struct Node** head_ref, int new_data){
+void append(struct Node** head_ref, int new_data, int new_size){
     /* 1. allocate node */
     struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
 
@@ -70,6 +73,7 @@ void append(struct Node** head_ref, int new_data){
 
     /* 2. put in the data  */
     new_node->data  = new_data;
+    new_node->size  = new_size;
 
     /* 3. This new node is going to be the last node, so
           make next of it as NULL*/
@@ -97,49 +101,148 @@ void append(struct Node** head_ref, int new_data){
     return;
 }
 
-// This function prints contents of linked list starting from the given node
-void printList(struct Node *node){
-    struct Node *last;
-    printf("\nTraversal in forward direction \n");
-    while (node != NULL)
-    {
-        printf(" %d ", node->data);
-        last = node;
-        node = node->next;
-    }
 
-    printf("\nTraversal in reverse direction \n");
-    while (last != NULL)
-    {
-        printf(" %d ", last->data);
-        last = last->prev;
+void bestFit(struct Node *node, int new_data, int new_size){
+  struct Node *iteratedNode = node;
+  int currentBestFit = -1;
+  int j = 0;
+  int currentBestFitID = 0;
+  while(iteratedNode != NULL){    //first find the correct spot to put in new process
+    if(iteratedNode->data == -1 && iteratedNode->size >= new_size //if the node is empty and the size is greater than or equal to the new process
+      && (iteratedNode->size < currentBestFit || currentBestFit < 0))  {          //and if its better than the current best fit
+        currentBestFit = iteratedNode->size;
+        currentBestFitID = j;
     }
+    iteratedNode = iteratedNode->next;
+    j++;
+  }
+  int i = 0;
+  while(node != NULL){
+    if(i == currentBestFitID){
+      if(node->size == new_size){ //if the current block is the size of the new block do nothing special
+        node->size = new_size;
+        node->data = new_data;
+        return;
+      }
+      else{   //split block by inserting new node and make its data -1 and size = oldsize - new_size
+        insertAfter(node->prev, -1, (node->size - new_size));
+        node->data = new_data;
+        node->size = new_size;
+        return;
+      }
+    }
+    node = node->next;
+    i++;
+  }
+}
+/* Removes Process from the list. Sets data to -1 to show that its block is
+   is now empty and ready to be used again */
+void takeProcessOff(struct Node *node, int identifier){
+  while (node != NULL){
+    if(node-> data == identifier){
+      node->data = -1;
+      break;
+    }
+    node = node->next;
+  }
 }
 
-/* Drier program to test above functions*/
+// Removes node completely from list
+void removeNode(struct Node *node, int identifier){
+  while (node != NULL)
+  {
+      if(node->data == identifier)
+      {
+        printf("%s\n", "LOCATED NODE TO BE REMOVED");
+        struct Node* nextNode =  node->next;
+        node = node->prev;
+        node->next = nextNode;
+        break;
+      }
+      node = node->next;
+  }
+} //not used!
+
+// If there are insances where there are multiple empty blocks in a row
+void cleanUpList(struct Node *node){
+  while (node != NULL && node->next != NULL){
+    if(node->data == -1 && node->next->data == -1){
+        node->size += node->next->size;
+        node->next = node->next->next;
+    }
+    node = node->next;
+  }
+  //TODO move other cleanup in here
+}
+
+void removeProcess(struct Node *node, int identifier){
+  takeProcessOff(node, identifier);  //remove 4. so linked list becomes 1->7->8->6->(-1)->NULL
+  cleanUpList(node);
+  /*if(node->data == -1){   //if the top of the list is empty remove it to clean up space
+    node = node->next;    //this is supposed to be in cleanUpList but its not working...
+    node->prev = NULL;
+  }*/
+}
+
+// This function prints contents of linked list starting from the given node
+void printList(struct Node *node){
+    //struct Node *last;
+    printf("Created DLL is: ");
+    printf("Traversal in forward direction \n");
+    while (node != NULL)
+    {
+        printf("Data: %d Size: %d \n", node->data, node->size);
+        //last = node;
+        node = node->next;
+    }
+    /*printf("\nTraversal in reverse direction \n");
+    while (last != NULL)
+    {
+        printf("Data: %d Size: %d \n", last->data, last->size);
+        last = last->prev;
+    }*/
+}
+
+/* Driver program to test above functions*/
 int main()
 {
     /* Start with the empty list */
     struct Node* head = NULL;
 
     // Insert 6.  So linked list becomes 6->NULL
-    append(&head, 6);
+    append(&head, 6, 10);
 
     // Insert 7 at the beginning. So linked list becomes 7->6->NULL
-    push(&head, 7);
+    push(&head, 7, 10);
 
     // Insert 1 at the beginning. So linked list becomes 1->7->6->NULL
-    push(&head, 1);
+    push(&head, 1, 15);
 
     // Insert 4 at the end. So linked list becomes 1->7->6->4->NULL
-    append(&head, 4);
+    append(&head, 4, 20);
 
     // Insert 8, after 7. So linked list becomes 1->7->8->6->4->NULL
-    insertAfter(head->next, 8);
+    insertAfter(head->next, 8, 9);
 
-    printf("Created DLL is: ");
+
     printList(head);
 
-    getchar();
+    //Tests Removal functions
+
+    removeProcess(head, 4);  //Removes Process 4   1->7->8->6->(-1)->NULL
+    removeProcess(head, 1);  //Removes Process 1   (-1)->7->8->6->(-1)->NULL  should be 7->8->6->(-1)->NULL
+    removeProcess(head, 7);  //Removes Process 7   (-1)->8->6->4->NULL        should be 8->6->(-1)->NULL
+    if(head->data == -1){   //if the top of the list is empty remove it to clean up space, needs to be called after a remove
+      head = head->next;    //this is supposed to be in cleanUpList but its not working...
+      head->prev = NULL;
+    }
+    printList(head);
+
+    //Tests Best Fit
+    bestFit(head, 10, 10);  //Add in 10 so linked list becomes 1->7->8->6->(-1)->10->NULL
+    bestFit(head, 12, 10);  //Add in 12 so linked list becomes 1->7->8->6->12->10->NULL
+    printList(head);
+
+    //getchar();
     return 0;
 }
