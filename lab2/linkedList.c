@@ -40,7 +40,7 @@ void insertAfter(struct Node *prev_node, int new_data, int new_size){
     if (prev_node == NULL)
     {
         printf("the given previous node cannot be NULL");
-        return;
+        exit(0);
     }
 
     /* 2. allocate new node */
@@ -133,9 +133,8 @@ int bestFit(struct Node *node, int new_data, int new_size){
           return 0;
         }
         else{   //split block by inserting new node and make its data -1 and size = oldsize - new_size
-          insertAfter(node->prev, -1, (node->size - new_size));
-          node->data = new_data;
-          node->size = new_size;
+          insertAfter(node, new_data, new_size);
+          node->size = (node->size - new_size);
           return 0;
         }
       }
@@ -219,8 +218,9 @@ int main()
     /* Start with the empty list */
     struct Node* head = NULL;
 
+    push(&head, -1, 10);
     // Insert 6.  So linked list becomes 6->NULL
-    if(bestFit(head, 6, 10) == -1)
+    /*if(bestFit(head, 6, 10) == -1)
       push(&head, 6, 10);
     // Insert 7 at the beginning. So linked list becomes 7->6->NULL
     push(&head, 7, 10);
@@ -240,8 +240,10 @@ int main()
     //Tests Removal functions
 
     removeProcess(head, 4);  //Removes Process 4   1->7->8->6->(-1)->NULL
-    removeProcess(head, 1);  //Removes Process 1   (-1)->7->8->6->(-1)->NULL  should be 7->8->6->(-1)->NULL
-    removeProcess(head, 7);  //Removes Process 7   (-1)->8->6->4->NULL        should be 8->6->(-1)->NULL
+    printList(head);
+    removeProcess(head, 6);  //Removes Process 1   1->7->8->(-1)->NULL  should be 7->8->6->(-1)->NULL
+    printList(head);
+    removeProcess(head, 8);  //Removes Process 7   1->(-1)->NULL        should be 8->6->(-1)->NULL
     if(head->data == -1){   //if the top of the list is empty remove it to clean up space, needs to be called after a remove
       head = head->next;    //this is supposed to be in cleanUpList but its not working...
       head->prev = NULL;
@@ -252,8 +254,9 @@ int main()
     printList(head);
     if(bestFit(head, 10, 10) == -1)
       push(&head, 10, 10);  //Add in 10 so linked list becomes 8->6->(-1)->10->NULL
-    if(bestFit(head, 12, 10) == -1) //Add in 12 so linked list becomes 8->6->12->10->NULL
-      push(&head, 12, 10);
+    printList(head);*/
+    if(bestFit(head, 12, 5) == -1) //Add in 12 so linked list becomes 8->6->12->10->NULL
+      push(&head, 12, 5);
     printList(head);
 
     //getchar();

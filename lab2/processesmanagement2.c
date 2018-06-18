@@ -117,8 +117,8 @@ void insertAfter(struct Node* prev_node, int new_data, int new_size){
     /*1. check if the given prev_node is NULL */
     if (prev_node == NULL)
     {
-        printf("the given previous node cannot be NULL");
-        return;
+        printf("the given previous node cannot be NULL\n");
+        exit(0);
     }
 
     /* 2. allocate new node */
@@ -180,11 +180,14 @@ void append(struct Node** head_ref, int new_data, int new_size){
     return;
 }
 
-void bestFit(struct Node *node, int new_data, int new_size){
+int bestFit(struct Node *node, int new_data, int new_size){
   struct Node *iteratedNode = node;
   int currentBestFit = -1;
   int j = 0;
   int currentBestFitID = 0;
+  if(node == NULL){
+    return -1;
+  }
   while(iteratedNode != NULL){    //first find the correct spot to put in new process
     if(iteratedNode->data == -1 && iteratedNode->size >= new_size //if the node is empty and the size is greater than or equal to the new process
       && (iteratedNode->size < currentBestFit || currentBestFit < 0))  {          //and if its better than the current best fit
@@ -195,23 +198,28 @@ void bestFit(struct Node *node, int new_data, int new_size){
     j++;
   }
   int i = 0;
-  while(node != NULL){
-    if(i == currentBestFitID){
-      if(node->size == new_size){ //if the current block is the size of the new block do nothing special
-        node->size = new_size;
-        node->data = new_data;
-        return;
-      }
-      else{   //split block by inserting new node and make its data -1 and size = oldsize - new_size
-        insertAfter(node->prev, -1, (node->size - new_size));
-        node->data = new_data;
-        node->size = new_size;
-        return;
-      }
-    }
-    node = node->next;
-    i++;
+  if(currentBestFit == -1){   //no spots
+    return -1;
   }
+  else{
+    while(node != NULL){
+      if(i == currentBestFitID){
+        if(node->size == new_size){ //if the current block is the size of the new block do nothing special
+          node->size = new_size;
+          node->data = new_data;
+          return 0;
+        }
+        else{   //split block by inserting new node and make its data -1 and size = oldsize - new_size
+          insertAfter(node, new_data, new_size);
+          node->size = (node->size - new_size);
+          return 0;
+        }
+      }
+      node = node->next;
+      i++;
+    }
+  }
+  return 0;
 }
 /* Removes Process from the list. Sets data to -1 to show that its block is
    is now empty and ready to be used again */
@@ -249,6 +257,7 @@ void removeProcess(struct Node *node, int identifier){
 // This function prints contents of linked list starting from the given node
 void printList(struct Node *node){
     //struct Node *last;
+    printf("%s\n", "List:");
     while (node != NULL)
     {
         printf("Data: %d Size: %d \n", node->data, node->size);
@@ -437,7 +446,7 @@ void Dispatcher() {
         head = head->next;    //this is supposed to be in cleanUpList but its not working...
         head->prev = NULL;
       }
-      printList(head);
+      //printList(head);
     }
     //TODO Worst Fit
 
@@ -445,15 +454,17 @@ void Dispatcher() {
     NumberofJobs[TAT]++;
     NumberofJobs[WT]++;
     NumberofJobs[CBT]++;
-    printf(" >>>>>Process # %d complete, %d Processes Completed So Far Page(s) Released %d<<<<<<\n",
-	  processOnCPU->ProcessID,NumberofJobs[THGT], pagesToBeReleased);
+    printf(" >>>>>Process # %d complete, %d Processes Completed So Far<<<<<<\n",
+	  processOnCPU->ProcessID,NumberofJobs[THGT]);
+    if(processOnCPU->ProcessID == 113)
+      printList(head);
     processOnCPU=DequeueProcess(RUNNINGQUEUE);
     EnqueueProcess(EXITQUEUE,processOnCPU);
 
 
     SumMetrics[TAT]     += Now() - processOnCPU->JobArrivalTime;
     SumMetrics[WT]      += processOnCPU->TimeInReadyQueue;
-
+    //printf("%s\n", "HI?");
 
     // processOnCPU = DequeueProcess(EXITQUEUE);
     // XXX free(processOnCPU);
@@ -582,15 +593,19 @@ void LongtermScheduler(void){
       }
     else if(memoryPolicy == BESTFIT){
       if(AvailableMemory >= currentProcess->MemoryRequested){
-        if(head == NULL){
-          printf("%s\n", "only once");
-          push(&head, currentProcess->ProcessID, currentProcess->MemoryRequested);
-        }
-        else{
-          bestFit(head, currentProcess->ProcessID, currentProcess->MemoryRequested);
-        }
+          if(bestFit(head, currentProcess->ProcessID, currentProcess->MemoryRequested) == -1){
+              push(&head, currentProcess->ProcessID, currentProcess->MemoryRequested);
+            }
+          if(head->data == -1){   //if the top of the list is empty remove it to clean up space, needs to be called after a remove
+            head = head->next;    //this is supposed to be in cleanUpList but its not working...
+            head->prev = NULL;
+          }
+          //printList(head);
+          AvailableMemory-= currentProcess->MemoryRequested;
+      }
+      else{
         printList(head);
-        AvailableMemory-= currentProcess->MemoryRequested;
+        exit(0);
       }
     }
     //TODO Worst Fit
