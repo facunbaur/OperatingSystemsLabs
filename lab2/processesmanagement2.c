@@ -28,9 +28,10 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 #define FCFS            1
 #define RR              3
 
-#define OMAP             0
-#define PAGING           1
-#define PAGESIZE  8192
+#define OMAP            0
+#define PAGING          1
+#define BESTFIT         2
+#define PAGESIZE        8192
 
 #define MAXMETRICS      5
 
@@ -49,10 +50,11 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 
 Quantity NumberofJobs[MAXMETRICS]; // Number of Jobs for which metric was collected
 Average  SumMetrics[MAXMETRICS]; // Sum for each Metrics
-int memoryPolicy = 1; //OMAP = 0, PAGING = 1
+int memoryPolicy = BESTFIT;
 
 int  pagesAvailable = 1048576 / PAGESIZE;
 int  nonavailabalePages = 0;
+struct Node* head = NULL;
 //int pages_size = *(&Pages + 1) - Pages;
 //int pagesAvailable;
 
@@ -70,6 +72,198 @@ void                 CPUScheduler(Identifier whichPolicy);
 ProcessControlBlock *SRTF();
 void                 Dispatcher();
 void                 checkForMissingPages();
+
+/*struct               Node();
+void                 push(struct Node** head_ref, int new_data, int new_size);
+void                 insertAfter(struct Node** head_ref, int new_data, int new_size);
+void                 append(struct Node** head_ref, int new_data, int new_size);
+void                 bestFit(struct node *node, int new_data, int new_size);
+void                 takeProcessOff(struct Node *node, int identifier);
+void                 cleanUpList(struct Node *node);
+void                 removeProcess(struct Node *node, int identifier);*/
+
+// A linked list node
+struct Node{
+    int data;
+    int size;
+    struct Node *next;
+    struct Node *prev;
+};
+
+/* Given a reference (pointer to pointer) to the head of a list
+   and an int, inserts a new node on the front of the list. */
+void push(struct Node** head_ref, int new_data, int new_size){
+    /* 1. allocate node */
+    struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
+
+    /* 2. put in the data  */
+    new_node->data  = new_data;
+    new_node->size  = new_size;
+
+    /* 3. Make next of new node as head and previous as NULL */
+    new_node->next = (*head_ref);
+    new_node->prev = NULL;
+
+    /* 4. change prev of head node to new node */
+    if((*head_ref) !=  NULL)
+      (*head_ref)->prev = new_node ;
+
+    /* 5. move the head to point to the new node */
+    (*head_ref)    = new_node;
+}
+
+/* Given a node as prev_node, insert a new node after the given node */
+void insertAfter(struct Node* prev_node, int new_data, int new_size){
+    /*1. check if the given prev_node is NULL */
+    if (prev_node == NULL)
+    {
+        printf("the given previous node cannot be NULL");
+        return;
+    }
+
+    /* 2. allocate new node */
+    struct Node* new_node =(struct Node*) malloc(sizeof(struct Node));
+
+    /* 3. put in the data  */
+    new_node->data  = new_data;
+    new_node->size  = new_size;
+
+    /* 4. Make next of new node as next of prev_node */
+    new_node->next = prev_node->next;
+
+    /* 5. Make the next of prev_node as new_node */
+    prev_node->next = new_node;
+
+    /* 6. Make prev_node as previous of new_node */
+    new_node->prev = prev_node;
+
+    /* 7. Change previous of new_node's next node */
+    if (new_node->next != NULL)
+      new_node->next->prev = new_node;
+}
+
+/* Given a reference (pointer to pointer) to the head
+   of a DLL and an int, appends a new node at the end  */
+void append(struct Node** head_ref, int new_data, int new_size){
+    /* 1. allocate node */
+    struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
+
+    struct Node *last = *head_ref;  /* used in step 5*/
+
+    /* 2. put in the data  */
+    new_node->data  = new_data;
+    new_node->size  = new_size;
+
+    /* 3. This new node is going to be the last node, so
+          make next of it as NULL*/
+    new_node->next = NULL;
+
+    /* 4. If the Linked List is empty, then make the new
+          node as head */
+    if (*head_ref == NULL)
+    {
+        new_node->prev = NULL;
+        *head_ref = new_node;
+        return;
+    }
+
+    /* 5. Else traverse till the last node */
+    while (last->next != NULL)
+        last = last->next;
+
+    /* 6. Change the next of last node */
+    last->next = new_node;
+
+    /* 7. Make last node as previous of new node */
+    new_node->prev = last;
+
+    return;
+}
+
+void bestFit(struct Node *node, int new_data, int new_size){
+  struct Node *iteratedNode = node;
+  int currentBestFit = -1;
+  int j = 0;
+  int currentBestFitID = 0;
+  while(iteratedNode != NULL){    //first find the correct spot to put in new process
+    if(iteratedNode->data == -1 && iteratedNode->size >= new_size //if the node is empty and the size is greater than or equal to the new process
+      && (iteratedNode->size < currentBestFit || currentBestFit < 0))  {          //and if its better than the current best fit
+        currentBestFit = iteratedNode->size;
+        currentBestFitID = j;
+    }
+    iteratedNode = iteratedNode->next;
+    j++;
+  }
+  int i = 0;
+  while(node != NULL){
+    if(i == currentBestFitID){
+      if(node->size == new_size){ //if the current block is the size of the new block do nothing special
+        node->size = new_size;
+        node->data = new_data;
+        return;
+      }
+      else{   //split block by inserting new node and make its data -1 and size = oldsize - new_size
+        insertAfter(node->prev, -1, (node->size - new_size));
+        node->data = new_data;
+        node->size = new_size;
+        return;
+      }
+    }
+    node = node->next;
+    i++;
+  }
+}
+/* Removes Process from the list. Sets data to -1 to show that its block is
+   is now empty and ready to be used again */
+void takeProcessOff(struct Node *node, int identifier){
+  while (node != NULL){
+    if(node-> data == identifier){
+      node->data = -1;
+      break;
+    }
+    node = node->next;
+  }
+}
+
+// If there are insances where there are multiple empty blocks in a row
+void cleanUpList(struct Node *node){
+  while (node != NULL && node->next != NULL){
+    if(node->data == -1 && node->next->data == -1){
+        node->size += node->next->size;
+        node->next = node->next->next;
+    }
+    node = node->next;
+  }
+  //TODO move other cleanup in here
+}
+
+void removeProcess(struct Node *node, int identifier){
+  takeProcessOff(node, identifier);  //remove 4. so linked list becomes 1->7->8->6->(-1)->NULL
+  cleanUpList(node);
+  /*if(node->data == -1){   //if the top of the list is empty remove it to clean up space
+    node = node->next;    //this is supposed to be in cleanUpList but its not working...
+    node->prev = NULL;
+  }*/
+}
+
+// This function prints contents of linked list starting from the given node
+void printList(struct Node *node){
+    //struct Node *last;
+    while (node != NULL)
+    {
+        printf("Data: %d Size: %d \n", node->data, node->size);
+        //last = node;
+        node = node->next;
+    }
+    printf("\n" );
+    /*printf("\nTraversal in reverse direction \n");
+    while (last != NULL)
+    {
+        printf("Data: %d Size: %d \n", last->data, last->size);
+        last = last->prev;
+    }*/
+}
+
 
 /*****************************************************************************\
 * function: main()                                                            *
@@ -236,7 +430,15 @@ void Dispatcher() {
         nonavailabalePages -= pagesToBeReleased;
         checkForMissingPages();
     }
-    //TODO Best Fit
+    else if (memoryPolicy == BESTFIT){
+      AvailableMemory += processOnCPU->MemoryRequested;
+      removeProcess(head, processOnCPU->ProcessID);
+      if(head->data == -1){   //if the top of the list is empty remove it to clean up space
+        head = head->next;    //this is supposed to be in cleanUpList but its not working...
+        head->prev = NULL;
+      }
+      printList(head);
+    }
     //TODO Worst Fit
 
     NumberofJobs[THGT]++;
@@ -335,9 +537,8 @@ void BookKeeping(void){
      i++;
      printf("%d\n", leftovers->ProcessID);
      leftovers = DequeueProcess(READYQUEUE);
-     */
   }
-  printf("Processes Still Left on Ready Queue: %d Number of Pages Left Busy: %d\n", i, j);
+  printf("Processes Still Left on Ready Queue: %d Number of Pages Left Busy: %d\n", i, j);*/
   exit(0);
 }
 
@@ -379,7 +580,19 @@ void LongtermScheduler(void){
           return;
         }
       }
-    //TODO Best Fit
+    else if(memoryPolicy == BESTFIT){
+      if(AvailableMemory >= currentProcess->MemoryRequested){
+        if(head == NULL){
+          printf("%s\n", "only once");
+          push(&head, currentProcess->ProcessID, currentProcess->MemoryRequested);
+        }
+        else{
+          bestFit(head, currentProcess->ProcessID, currentProcess->MemoryRequested);
+        }
+        printList(head);
+        AvailableMemory-= currentProcess->MemoryRequested;
+      }
+    }
     //TODO Worst Fit
     currentProcess->TimeInJobQueue = Now() - currentProcess->JobArrivalTime; // Set TimeInJobQueue
     currentProcess->JobStartTime = Now(); // Set JobStartTime
