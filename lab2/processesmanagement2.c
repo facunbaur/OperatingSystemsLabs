@@ -414,7 +414,6 @@ ProcessControlBlock *SRTF() {
  *              else move process from running queue to Exit Queue      *
 \***********************************************************************/
 void Dispatcher() {
-
   double start;
   int pagesToBeReleased;
   ProcessControlBlock *processOnCPU = Queues[RUNNINGQUEUE].Tail; // Pick Process on CPU
@@ -442,10 +441,10 @@ void Dispatcher() {
     else if (memoryPolicy == BESTFIT){
       AvailableMemory += processOnCPU->MemoryRequested;
       removeProcess(head, processOnCPU->ProcessID);
-      if(head->data == -1){   //if the top of the list is empty remove it to clean up space
+      /*if(head->data == -1){   //if the top of the list is empty remove it to clean up space
         head = head->next;    //this is supposed to be in cleanUpList but its not working...
-        head->prev = NULL;
-      }
+        head->prev = NULL; //causes seg fault?
+      }*/
       //printList(head);
     }
     //TODO Worst Fit
@@ -464,12 +463,12 @@ void Dispatcher() {
 
     SumMetrics[TAT]     += Now() - processOnCPU->JobArrivalTime;
     SumMetrics[WT]      += processOnCPU->TimeInReadyQueue;
-    //printf("%s\n", "HI?");
 
     // processOnCPU = DequeueProcess(EXITQUEUE);
     // XXX free(processOnCPU);
 
-  } else { // Process still needs computing, out it on CPU
+  }
+  else { // Process still needs computing, out it on CPU
     TimePeriod CpuBurstTime = processOnCPU->CpuBurstTime;
     processOnCPU->TimeInReadyQueue += Now() - processOnCPU->JobStartTime;
     if (PolicyNumber == RR){
@@ -603,9 +602,9 @@ void LongtermScheduler(void){
           //printList(head);
           AvailableMemory-= currentProcess->MemoryRequested;
       }
-      else{
-        printList(head);
-        exit(0);
+      else{ //not enough space
+        //printList(head);
+        return;
       }
     }
     //TODO Worst Fit
