@@ -18,7 +18,7 @@
 *                             Global data types                               *
 \*****************************************************************************/
 
-typedef enum {TAT,RT,CBT,THGT,WT} Metric;
+typedef enum {TAT,RT,CBT,THGT,WT, JQ} Metric;
 
 
 /*****************************************************************************\
@@ -31,9 +31,12 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 #define OMAP            0
 #define PAGING          1
 #define BESTFIT         2
+#define WORSTFIT        3
+#define NONE            -1
+
 #define PAGESIZE        8192
 
-#define MAXMETRICS      5
+#define MAXMETRICS      6
 
 
 
@@ -50,7 +53,7 @@ typedef enum {TAT,RT,CBT,THGT,WT} Metric;
 
 Quantity NumberofJobs[MAXMETRICS]; // Number of Jobs for which metric was collected
 Average  SumMetrics[MAXMETRICS]; // Sum for each Metrics
-int memoryPolicy = BESTFIT;
+int memoryPolicy = WORSTFIT;
 
 int  pagesAvailable = 1048576 / PAGESIZE;
 int  nonavailabalePages = 0;
@@ -72,15 +75,6 @@ void                 CPUScheduler(Identifier whichPolicy);
 ProcessControlBlock *SRTF();
 void                 Dispatcher();
 void                 checkForMissingPages();
-
-/*struct               Node();
-void                 push(struct Node** head_ref, int new_data, int new_size);
-void                 insertAfter(struct Node** head_ref, int new_data, int new_size);
-void                 append(struct Node** head_ref, int new_data, int new_size);
-void                 bestFit(struct node *node, int new_data, int new_size);
-void                 takeProcessOff(struct Node *node, int identifier);
-void                 cleanUpList(struct Node *node);
-void                 removeProcess(struct Node *node, int identifier);*/
 
 // A linked list node
 struct Node{
@@ -221,6 +215,49 @@ int bestFit(struct Node *node, int new_data, int new_size){
   }
   return 0;
 }
+
+int worstFit(struct Node *node, int new_data, int new_size){
+  struct Node *iteratedNode = node;
+  int currentWorstFit = 0;
+  int j = 0;
+  int currentWorstFitID = 0;
+  if(node == NULL){
+    return -1;
+  }
+  while(iteratedNode != NULL){    //first find the correct spot to put in new process
+    if(iteratedNode->data == -1 && iteratedNode->size >= new_size //if the node is empty and the size is greater than or equal to the new process
+      && iteratedNode->size > currentWorstFit)  {          //and if its better than the current best fit
+        currentWorstFit = iteratedNode->size;
+        currentWorstFitID = j;
+    }
+    iteratedNode = iteratedNode->next;
+    j++;
+  }
+  int i = 0;
+  if(currentWorstFit == -1){   //no spots
+    return -1;
+  }
+  else{
+    while(node != NULL){
+      if(i == currentWorstFitID){
+        if(node->size == new_size){ //if the current block is the size of the new block do nothing special
+          node->size = new_size;
+          node->data = new_data;
+          return 0;
+        }
+        else{   //split block by inserting new node and make its data -1 and size = oldsize - new_size
+          insertAfter(node, new_data, new_size);
+          node->size = (node->size - new_size);
+          return 0;
+        }
+      }
+      node = node->next;
+      i++;
+    }
+  }
+  return 0;
+}
+
 /* Removes Process from the list. Sets data to -1 to show that its block is
    is now empty and ready to be used again */
 void takeProcessOff(struct Node *node, int identifier){
@@ -438,31 +475,25 @@ void Dispatcher() {
         nonavailabalePages -= pagesToBeReleased;
         checkForMissingPages();
     }
-    else if (memoryPolicy == BESTFIT){
+    else if (memoryPolicy == BESTFIT || memoryPolicy == WORSTFIT){
       AvailableMemory += processOnCPU->MemoryRequested;
       removeProcess(head, processOnCPU->ProcessID);
-      /*if(head->data == -1){   //if the top of the list is empty remove it to clean up space
-        head = head->next;    //this is supposed to be in cleanUpList but its not working...
-        head->prev = NULL; //causes seg fault?
-      }*/
-      //printList(head);
     }
-    //TODO Worst Fit
 
     NumberofJobs[THGT]++;
     NumberofJobs[TAT]++;
     NumberofJobs[WT]++;
     NumberofJobs[CBT]++;
+    NumberofJobs[JQ]++;
     printf(" >>>>>Process # %d complete, %d Processes Completed So Far<<<<<<\n",
 	  processOnCPU->ProcessID,NumberofJobs[THGT]);
-    if(processOnCPU->ProcessID == 113)
-      printList(head);
     processOnCPU=DequeueProcess(RUNNINGQUEUE);
     EnqueueProcess(EXITQUEUE,processOnCPU);
 
 
     SumMetrics[TAT]     += Now() - processOnCPU->JobArrivalTime;
     SumMetrics[WT]      += processOnCPU->TimeInReadyQueue;
+    SumMetrics[JQ]      += processOnCPU->TimeInJobQueue;
 
     // processOnCPU = DequeueProcess(EXITQUEUE);
     // XXX free(processOnCPU);
@@ -529,26 +560,15 @@ void BookKeeping(void){
     SumMetrics[WT] = SumMetrics[WT]/ (Average) NumberofJobs[WT];
   }
 
+  if (NumberofJobs[JQ] > 0){
+    SumMetrics[JQ] = SumMetrics[JQ]/ (Average) NumberofJobs[JQ];
+  }
   printf("\n********* Processes Managemenent Numbers ******************************\n");
   printf("Policy Number = %d, Quantum = %.6f   Show = %d\n", PolicyNumber, Quantum, Show);
   printf("Number of Completed Processes = %d\n", NumberofJobs[THGT]);
-  printf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f\n\a",
-	 SumMetrics[TAT], SumMetrics[RT], SumMetrics[CBT],
-	 NumberofJobs[THGT]/Now(), SumMetrics[WT]);
-   /*int j = 0; //code to check how many processes are left on ready
-   int i = 0;
-   ProcessControlBlock *leftovers = DequeueProcess(READYQUEUE);
-   while (leftovers){
-     int pagesRequested = ceil(leftovers->MemoryRequested / PAGESIZE); //Calculating the number of pages
-     if(leftovers->MemoryRequested % PAGESIZE > 0){                    //rounds up pages if any remainder
-       pagesRequested++;
-     }
-     j += pagesRequested;
-     i++;
-     printf("%d\n", leftovers->ProcessID);
-     leftovers = DequeueProcess(READYQUEUE);
-  }
-  printf("Processes Still Left on Ready Queue: %d Number of Pages Left Busy: %d\n", i, j);*/
+  printf("ATAT=%f   ART=%f  CBT = %f  T=%f AWT=%f  AWTJQ=%f\n\a",
+	SumMetrics[TAT], SumMetrics[RT], SumMetrics[CBT],
+	NumberofJobs[THGT]/Now(), SumMetrics[WT], SumMetrics[JQ]);
   exit(0);
 }
 
@@ -574,7 +594,7 @@ void LongtermScheduler(void){
         }
     }
     else if(memoryPolicy == PAGING){
-        int pagesRequested = ceil(currentProcess->MemoryRequested / PAGESIZE); //Calculating the number of pages
+        int pagesRequested = (currentProcess->MemoryRequested / PAGESIZE); //Calculating the number of pages
         if(currentProcess->MemoryRequested % PAGESIZE > 0){                    //rounds up pages if any remainder
           pagesRequested++;
         }
@@ -603,11 +623,29 @@ void LongtermScheduler(void){
           AvailableMemory-= currentProcess->MemoryRequested;
       }
       else{ //not enough space
-        //printList(head);
+        printf(">>>>>Number of requested pages exceeds the amount of available memory<<<<<<\n");
+        EnqueueProcess(JOBQUEUE, currentProcess);
         return;
       }
     }
-    //TODO Worst Fit
+    else if(memoryPolicy == WORSTFIT){
+      if(AvailableMemory >= currentProcess->MemoryRequested){
+          if(worstFit(head, currentProcess->ProcessID, currentProcess->MemoryRequested) == -1){
+              push(&head, currentProcess->ProcessID, currentProcess->MemoryRequested);
+            }
+          if(head->data == -1){   //if the top of the list is empty remove it to clean up space, needs to be called after a remove
+            head = head->next;    //this is supposed to be in cleanUpList but its not working...
+            head->prev = NULL;
+          }
+          //printList(head);
+          AvailableMemory-= currentProcess->MemoryRequested;
+      }
+      else{ //not enough space
+        printf(">>>>>Number of requested pages exceeds the amount of available memory<<<<<<\n");
+        EnqueueProcess(JOBQUEUE, currentProcess);
+        return;
+      }
+    }
     currentProcess->TimeInJobQueue = Now() - currentProcess->JobArrivalTime; // Set TimeInJobQueue
     currentProcess->JobStartTime = Now(); // Set JobStartTime
     EnqueueProcess(READYQUEUE,currentProcess); // Place process in Ready Queue

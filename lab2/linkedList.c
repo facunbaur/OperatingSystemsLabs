@@ -105,28 +105,28 @@ void append(struct Node** head_ref, int new_data, int new_size){
 
 int bestFit(struct Node *node, int new_data, int new_size){
   struct Node *iteratedNode = node;
-  int currentBestFit = -1;
+  int currentWorstFit = -1;
   int j = 0;
-  int currentBestFitID = 0;
+  int currentWorstFitID = 0;
   if(node == NULL){
     return -1;
   }
   while(iteratedNode != NULL){    //first find the correct spot to put in new process
     if(iteratedNode->data == -1 && iteratedNode->size >= new_size //if the node is empty and the size is greater than or equal to the new process
-      && (iteratedNode->size < currentBestFit || currentBestFit < 0))  {          //and if its better than the current best fit
-        currentBestFit = iteratedNode->size;
-        currentBestFitID = j;
+      && (iteratedNode->size < currentWorstFit || currentWorstFit < 0))  {          //and if its better than the current best fit
+        currentWorstFit = iteratedNode->size;
+        currentWorstFitID = j;
     }
     iteratedNode = iteratedNode->next;
     j++;
   }
   int i = 0;
-  if(currentBestFit == -1){   //no spots
+  if(currentWorstFit == -1){   //no spots
     return -1;
   }
   else{
     while(node != NULL){
-      if(i == currentBestFitID){
+      if(i == currentWorstFitID){
         if(node->size == new_size){ //if the current block is the size of the new block do nothing special
           node->size = new_size;
           node->data = new_data;
@@ -144,6 +144,49 @@ int bestFit(struct Node *node, int new_data, int new_size){
   }
   return 0;
 }
+
+int worstFit(struct Node *node, int new_data, int new_size){
+  struct Node *iteratedNode = node;
+  int currentWorstFit = 0;
+  int j = 0;
+  int currentWorstFitID = 0;
+  if(node == NULL){
+    return -1;
+  }
+  while(iteratedNode != NULL){    //first find the correct spot to put in new process
+    if(iteratedNode->data == -1 && iteratedNode->size >= new_size //if the node is empty and the size is greater than or equal to the new process
+      && iteratedNode->size > currentWorstFit)  {          //and if its better than the current best fit
+        currentWorstFit = iteratedNode->size;
+        currentWorstFitID = j;
+    }
+    iteratedNode = iteratedNode->next;
+    j++;
+  }
+  int i = 0;
+  if(currentWorstFit == -1){   //no spots
+    return -1;
+  }
+  else{
+    while(node != NULL){
+      if(i == currentWorstFitID){
+        if(node->size == new_size){ //if the current block is the size of the new block do nothing special
+          node->size = new_size;
+          node->data = new_data;
+          return 0;
+        }
+        else{   //split block by inserting new node and make its data -1 and size = oldsize - new_size
+          insertAfter(node, new_data, new_size);
+          node->size = (node->size - new_size);
+          return 0;
+        }
+      }
+      node = node->next;
+      i++;
+    }
+  }
+  return 0;
+}
+
 /* Removes Process from the list. Sets data to -1 to show that its block is
    is now empty and ready to be used again */
 void takeProcessOff(struct Node *node, int identifier){
@@ -220,7 +263,7 @@ int main()
 
     push(&head, -1, 10);
     // Insert 6.  So linked list becomes 6->NULL
-    /*if(bestFit(head, 6, 10) == -1)
+    if(bestFit(head, 6, 10) == -1)
       push(&head, 6, 10);
     // Insert 7 at the beginning. So linked list becomes 7->6->NULL
     push(&head, 7, 10);
@@ -254,10 +297,12 @@ int main()
     printList(head);
     if(bestFit(head, 10, 10) == -1)
       push(&head, 10, 10);  //Add in 10 so linked list becomes 8->6->(-1)->10->NULL
-    printList(head);*/
-    if(bestFit(head, 12, 5) == -1) //Add in 12 so linked list becomes 8->6->12->10->NULL
-      push(&head, 12, 5);
+    push(&head, -1, 100);
     printList(head);
+    if(worstFit(head, 22, 10) == -1)
+      push(&head, 22, 10);
+    printList(head);
+
 
     //getchar();
 

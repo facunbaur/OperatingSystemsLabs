@@ -1,0 +1,33 @@
+Best Fit
+********* Behind Thee Scenes Numbers *********************************
+Policy Number = 1, Quantum = 0.005000   Show = 0
+Number of Completed Processes = 229
+ATAT=17.181472   ART=3.412273  CBT = 0.972898  T=0.987734 AWT=14.485341
+
+********* Processes Managemenent Numbers ******************************
+Policy Number = 1, Quantum = 0.005000   Show = 0
+Number of Completed Processes = 229
+ATAT=17.181472   ART=3.412272  CBT = 0.972506  T=0.987734 AWT=11.604362  AWTJQ=0.589463
+
+
+Paging Size 8192
+********* Behind Thee Scenes Numbers *********************************
+Policy Number = 1, Quantum = 0.005000   Show = 0
+Number of Completed Processes = 229
+ATAT=16.607137   ART=3.550395  CBT = 0.972838  T=0.987673 AWT=13.562748
+
+********* Processes Managemenent Numbers ******************************
+Policy Number = 1, Quantum = 0.005000   Show = 0
+Number of Completed Processes = 229
+ATAT=16.607138   ART=3.550393  CBT = 0.971267  T=0.987673 AWT=10.854930  AWTJQ=0.904936
+
+OMAP
+********* Behind Thee Scenes Numbers *********************************
+Policy Number = 1, Quantum = 0.005000   Show = 0
+Number of Completed Processes = 229
+ATAT=17.183895   ART=3.411291  CBT = 0.972949  T=0.987786 AWT=14.487422
+
+********* Processes Managemenent Numbers ******************************
+Policy Number = 1, Quantum = 0.005000   Show = 0
+Number of Completed Processes = 229
+ATAT=17.183895   ART=3.411290  CBT = 0.971379  T=0.987786 AWT=11.604035  AWTJQ=0.589338
