@@ -34,7 +34,7 @@ typedef enum {TAT,RT,CBT,THGT,WT, JQ} Metric;
 #define WORSTFIT        3
 #define NONE            -1
 
-#define PAGESIZE        8192
+#define PAGESIZE        256
 
 #define MAXMETRICS      6
 
@@ -484,7 +484,7 @@ void Dispatcher() {
     NumberofJobs[TAT]++;
     NumberofJobs[WT]++;
     NumberofJobs[CBT]++;
-    NumberofJobs[JQ]++;
+
     printf(" >>>>>Process # %d complete, %d Processes Completed So Far<<<<<<\n",
 	  processOnCPU->ProcessID,NumberofJobs[THGT]);
     processOnCPU=DequeueProcess(RUNNINGQUEUE);
@@ -493,7 +493,7 @@ void Dispatcher() {
 
     SumMetrics[TAT]     += Now() - processOnCPU->JobArrivalTime;
     SumMetrics[WT]      += processOnCPU->TimeInReadyQueue;
-    SumMetrics[JQ]      += processOnCPU->TimeInJobQueue;
+
 
     // processOnCPU = DequeueProcess(EXITQUEUE);
     // XXX free(processOnCPU);
@@ -650,6 +650,8 @@ void LongtermScheduler(void){
     currentProcess->JobStartTime = Now(); // Set JobStartTime
     EnqueueProcess(READYQUEUE,currentProcess); // Place process in Ready Queue
     currentProcess->state = READY; // Update process state
+    NumberofJobs[JQ]++;
+    SumMetrics[JQ]      += currentProcess->TimeInJobQueue;
     currentProcess = DequeueProcess(JOBQUEUE);
   }
 }
